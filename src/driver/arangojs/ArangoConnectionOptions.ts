@@ -9,7 +9,7 @@ export interface ArangoConnectionOptions extends BaseConnectionOptions {
     /**
      * Database type.
      */
-    readonly type: "arangojs";
+    readonly type: "arangodb";
     /**
      * ### database.useDatabase(databaseName): this
      * Updates the Database instance and its connection string to use the given databaseName, then returns itself.

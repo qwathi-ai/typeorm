@@ -15,6 +15,7 @@ import {AuroraDataApiDriver} from "./aurora-data-api/AuroraDataApiDriver";
 import {Driver} from "./Driver";
 import {Connection} from "../connection/Connection";
 import {SapDriver} from "./sap/SapDriver";
+import { ArangoDriver } from "./arangojs/ArangoDriver";
 
 /**
  * Helps to create drivers.
@@ -27,6 +28,8 @@ export class DriverFactory {
     create(connection: Connection): Driver {
         const {type} = connection.options;
         switch (type) {
+            case "arangodb":
+                return new ArangoDriver(connection);
             case "mysql":
                 return new MysqlDriver(connection);
             case "postgres":

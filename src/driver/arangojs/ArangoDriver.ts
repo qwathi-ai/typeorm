@@ -9,13 +9,13 @@ import { PlatformTools } from "../../platform/PlatformTools";
 import { DriverPackageNotInstalledError } from "../../error/DriverPackageNotInstalledError";
 import { ConnectionIsNotSetError}  from "../../error/ConnectionIsNotSetError";
 import { ArangoQueryRunner } from "./ArangoQueryRunner";
-import { ArangoSchemaBuilder } from "../../schema-builder/ArangoSchemaBuilder";
+import { MongoSchemaBuilder } from "../../schema-builder/MongoSchemaBuilder";
 import { ColumnMetadata } from "../../metadata/ColumnMetadata";
 import { ApplyValueTransformers } from "../../util/ApplyValueTransformers";
 
 // import {ObjectLiteral} from "../../common/ObjectLiteral";
-// import {TableColumn} from "../../schema-builder/table/TableColumn";
-// import {EntityMetadata} from "../../metadata/EntityMetadata";
+import {TableColumn} from "../../schema-builder/table/TableColumn";
+import {EntityMetadata} from "../../metadata/EntityMetadata";
 // // import {ObjectUtils} from "../../util/ObjectUtils";
 
 /**
@@ -30,7 +30,7 @@ export class ArangoDriver implements Driver {
     /**
      * Arangojs instance
      */
-    arangojs: Database;
+    arangodb: Database;
 
     /**
      * Mongodb does not require to dynamically create query runner each time,
@@ -223,17 +223,21 @@ export class ArangoDriver implements Driver {
     connect(): Promise<void> {
         return new Promise<void>((ok, fail) => {
             try {
-                this.arangojs = new Database(this.options)
+                this.arangodb = new Database(this.options)
+                // console.log('ARANGODB CONNECTING =>')
     
                 if(this.options.database) {
-                    this.arangojs.useDatabase(this.options.database)
+                    this.arangodb.useDatabase(this.options.database)
                 }
                 if (this.options.username) {
-                    this.arangojs.useBasicAuth(this.options.username, this.options.password || "")
+                    this.arangodb.useBasicAuth(this.options.username, this.options.password || "")
                 }
                 if (this.options.token) {
-                    this.arangojs.useBearerAuth(this.options.token)
+                    this.arangodb.useBearerAuth(this.options.token)
                 }
+                // console.log('ARANGODB CONNECTED =>')
+                this.queryRunner = new ArangoQueryRunner(this.connection, this.arangodb)
+
                 return ok()
             } catch (error){ return fail(error)}
         });
@@ -249,7 +253,7 @@ export class ArangoDriver implements Driver {
     async disconnect(): Promise<void> {
         return new Promise<void>((ok, fail) => {
             if (!this.queryRunner)
-                return fail(new ConnectionIsNotSetError("arangojs"));
+                return fail(new ConnectionIsNotSetError("Arangodb"));
             this.queryRunner.databaseConnection.close();
             this.queryRunner = undefined;
             return ok()
@@ -260,7 +264,7 @@ export class ArangoDriver implements Driver {
      * Creates a schema builder used to build and sync a schema.
      */
     createSchemaBuilder() {
-        return new ArangoSchemaBuilder(this.connection);
+        return new MongoSchemaBuilder(this.connection);
     }
 
     /**
@@ -315,35 +319,35 @@ export class ArangoDriver implements Driver {
      * Creates a database type from a given column metadata.
      */
     normalizeType(column: { type?: ColumnType, length?: number | string, precision?: number|null, scale?: number }): string {
-        throw new Error(`MongoDB is schema-less, not supported by this driver.`);
+        throw new Error(`ArangoDB is schema-less, not supported by this driver.`);
     }
 
     /**
      * Normalizes "default" value of the column.
      */
     normalizeDefault(columnMetadata: ColumnMetadata): string {
-        throw new Error(`MongoDB is schema-less, not supported by this driver.`);
+        throw new Error(`ArangoDB is schema-less, not supported by this driver.`);
     }
 
     /**
      * Normalizes "isUnique" value of the column.
      */
     normalizeIsUnique(column: ColumnMetadata): boolean {
-        throw new Error(`MongoDB is schema-less, not supported by this driver.`);
+        throw new Error(`ArangoDB is schema-less, not supported by this driver.`);
     }
 
     /**
      * Calculates column length taking into account the default length values.
      */
     getColumnLength(column: ColumnMetadata): string {
-        throw new Error(`MongoDB is schema-less, not supported by this driver.`);
+        throw new Error(`ArangoDB is schema-less, not supported by this driver.`);
     }
 
     /**
      * Normalizes "default" value of the column.
      */
     createFullType(column: TableColumn): string {
-        throw new Error(`MongoDB is schema-less, not supported by this driver.`);
+        throw new Error(`ArangoDB is schema-less, not supported by this driver.`);
     }
 
     /**
@@ -376,7 +380,7 @@ export class ArangoDriver implements Driver {
      * and returns only changed.
      */
     findChangedColumns(tableColumns: TableColumn[], columnMetadatas: ColumnMetadata[]): ColumnMetadata[] {
-        throw new Error(`MongoDB is schema-less, not supported by this driver.`);
+        throw new Error(`ArangoDB is schema-less, not supported by this driver.`);
     }
 
     /**
@@ -425,10 +429,10 @@ export class ArangoDriver implements Driver {
      */
     protected loadDependencies(): any {
         try {
-            this.arangojs = PlatformTools.load("arangojs");  // try to load native driver dynamically
+            this.arangodb = PlatformTools.load("arangojs");  // try to load native driver dynamically
 
         } catch (e) {
-            throw new DriverPackageNotInstalledError("ArangoJS", "arangojs");
+            throw new DriverPackageNotInstalledError("Arangodb", "arangojs");
         }
     }
 

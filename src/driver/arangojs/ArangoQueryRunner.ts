@@ -7,17 +7,17 @@ import { TableIndex } from "../../schema-builder/table/TableIndex";
 import {View} from "../../schema-builder/view/View";
 import { Connection } from "../../connection/Connection";
 import { ReadStream } from "../../platform/PlatformTools";
-import { ArangoEntityManager } from "../../entity-manager/ArangoEntityManager";
+import { MongoEntityManager } from "../../entity-manager/MongoEntityManager";
 import { SqlInMemory } from "../SqlInMemory";
 import { TableUnique } from "../../schema-builder/table/TableUnique";
 import { Broadcaster } from "../../subscriber/Broadcaster";
 import { TableCheck } from "../../schema-builder/table/TableCheck";
 import { TableExclusion } from "../../schema-builder/table/TableExclusion";
-import { Database, DocumentCollection } from 'arangojs';
-import { ArrayCursor } from 'arangojs/lib/cjs/cursor';
-import { AqlQuery } from 'arangojs/lib/cjs/aql-query';
-import { ImportResult } from 'arangojs/lib/cjs/collection';
-import { RemoveByExampleOptions, UpdateByExampleOptions, CollectionFigures } from 'arangojs/lib/cjs/util/types';
+import { Database, DocumentCollection, aql } from 'arangojs';
+import { AqlQuery } from "arangojs/lib/cjs/aql-query";
+import { ImportResult } from "arangojs/lib/cjs/collection";
+import { ArrayCursor } from "arangojs/lib/cjs/cursor";
+import { RemoveByExampleOptions, UpdateByExampleOptions, CollectionFigures } from "arangojs/lib/cjs/util/types";
 
 /**
  * Runs queries on a single MongoDB connection.
@@ -41,7 +41,7 @@ export class ArangoQueryRunner implements QueryRunner {
     /**
      * Entity manager working only with current query runner.
      */
-    manager: ArangoEntityManager;
+    manager: MongoEntityManager;
 
     /**
      * Indicates if connection for this query runner is released.
@@ -94,13 +94,12 @@ export class ArangoQueryRunner implements QueryRunner {
     /**
      * Creates a cursor for a query that can be used to iterate over results from ArangoDB.
      */
-    async cursor(collectionName: string, query?: AqlQuery): Promise<ArrayCursor> {
-        // if (query) {
-        //     return await this.databaseConnection.query(query)
-        // }
-        // const collection = this.getCollection(collectionName)
-        // return await this.databaseConnection.query(aql`for i in ${collection} return i`)
-        throw new Error('Not defined.')
+    cursor(collectionName: string, query?: AqlQuery): Promise<ArrayCursor> {
+        if (query) {
+            return this.databaseConnection.query(query)
+        }
+        return this.databaseConnection.query(aql`for i in ${collectionName} return i`)
+        // throw new Error('Not defined.')
     }
 
     /**
@@ -122,41 +121,41 @@ export class ArangoQueryRunner implements QueryRunner {
      * Count number of matching documents in the db to a query.
      */
     async count(collectionName: string, query?: AqlQuery): Promise<number> {
-        // const cur = await this.cursor(collectionName, query);
-        // return cur.count
-        throw new Error('Not defined.')
+        const cur = await this.cursor(collectionName, query);
+        return cur.count
+        // throw new Error('Not defined.')
     }
 
     /**
      * Creates an index on the db and collection.
      */
-    async createCollectionIndex(collectionName: string, details: ObjectLiteral): Promise<string> {
-        // return await this.getCollection(collectionName).ensurevIndex(details);
-        throw new Error('Not defined.')
+    async createCollectionIndex(collectionName: string, details: ObjectLiteral): Promise<any> {
+        return await this.databaseConnection.collection(collectionName).ensureIndex(details);
+        // throw new Error('Not defined.')
     }
 
     /**
      * Creates multiple indexes in the collection.
      */
     async createCollectionIndexes(collectionName: string, indexSpecs: ObjectLiteral[]): Promise<any> {
-        // return await Promise.all(indexSpecs.map(async (i) => await this.getCollection(collectionName).createIndex(i) ))
-        throw new Error('Not defined.')
+        return await Promise.all(indexSpecs.map(async (i) => await this.getCollection(collectionName).ensureIndex(i) ))
+        // throw new Error('Not defined.')
     }
 
     /**
      * Delete multiple documents.
      */
     async deleteMany(collectionName: string, example: ObjectLiteral, options?: RemoveByExampleOptions): Promise<any> {
-        // return await this.getCollection(collectionName).removeByExample(example, options);
-        throw new Error('Not defined.')
+        return await this.getCollection(collectionName).removeByExample(example, options);
+        // throw new Error('Not defined.')
     }
 
     /**
      * Delete a document on ArangoDB.
      */
     async deleteOne(collectionName: string, example: Object, options?: RemoveByExampleOptions): Promise<any> {
-        // return await this.getCollection(collectionName).removeByExample(example, Object.assign(options, {limit: 1}));
-        throw new Error('Not defined.')
+        return await this.getCollection(collectionName).removeByExample(example, Object.assign(options, {limit: 1}));
+        // throw new Error('Not defined.')
     }
 
     /**
@@ -170,25 +169,25 @@ export class ArangoQueryRunner implements QueryRunner {
      * Drops an index from this collection.
      */
     async dropCollectionIndex(collectionName: string, indexName: string): Promise<any> {
-        // return await this.getCollection(collectionName).dropIndex(indexName);
-        throw new Error('Not defined.')
+        return await this.getCollection(collectionName).dropIndex(indexName);
+        // throw new Error('Not defined.')
     }
 
     /**
      * Drops all indexes from the collection.
      */
     async dropCollectionIndexes(collectionName: string): Promise<any> {
-        // const indexes: any[] = await this.getCollection(collectionName).indexes()
-        // return Promise.all(indexes.map(i => await this.getCollection(collectionName).dropIndex(i))
-        throw new Error('Not defined.')
+        const indexes: any[] = await this.getCollection(collectionName).indexes()
+        return Promise.all(indexes.map(async i => await this.getCollection(collectionName).dropIndex(i)))
+        // throw new Error('Not defined.')
     }
 
     /**
      * Find a document and delete it in one atomic operation, requires a write lock for the duration of the operation.
      */
     async findOneAndDelete(collectionName: string, example: Object, options?: RemoveByExampleOptions): Promise<any> {
-        // return await this.getCollection(collectionName).removeByExample(example, Object.assign(options, {limit: 1}))
-        throw new Error('Not defined.')
+        return await this.getCollection(collectionName).removeByExample(example, Object.assign(options, {limit: 1}))
+        // throw new Error('Not defined.')
     }
 
     /**
@@ -198,16 +197,16 @@ export class ArangoQueryRunner implements QueryRunner {
         waitForSync?: boolean;
         limit?: number;
     }): Promise<any> {
-        // return await this.getCollection(collectionName).replaceByExample(example, Object.assign(options, {limit: 1}));
-        throw new Error('Not defined.')
+        return await this.getCollection(collectionName).replaceByExample(example, Object.assign(options, {limit: 1}));
+        // throw new Error('Not defined.')
     }
 
     /**
      * Find a document and update it in one atomic operation, requires a write lock for the duration of the operation.
      */
     async findOneAndUpdate(collectionName: string, example: ObjectLiteral, update: Object, options?: UpdateByExampleOptions): Promise<any> {
-        // return await this.getCollection(collectionName).updateByExample(example, update, Object.assign(options, {limit: 1}));
-        throw new Error('Not defined.')
+        return await this.getCollection(collectionName).updateByExample(example, update, Object.assign(options, {limit: 1}));
+        // throw new Error('Not defined.')
     }
 
     /**
@@ -282,8 +281,8 @@ export class ArangoQueryRunner implements QueryRunner {
         complete?: boolean
         details?: boolean
     }): Promise<ImportResult> {
-        // return await this.getCollection(collectionName).import(docs, options);
-        throw new Error('Not defined.')
+        return await this.getCollection(collectionName).import(docs, options);
+        // throw new Error('Not defined.')
     }
 
     /**
@@ -296,8 +295,8 @@ export class ArangoQueryRunner implements QueryRunner {
         silent?: boolean
         overwrite?: boolean
     }): Promise<any> {
-        // return await this.getCollection(collectionName).save(doc, options);
-        throw new Error('Not defined.')
+        return await this.getCollection(collectionName).save(doc, options);
+        // throw new Error('Not defined.')
     }
 
     /**
@@ -357,16 +356,16 @@ export class ArangoQueryRunner implements QueryRunner {
         rev?: string
         policy?: 'last' | 'error'
     }): Promise<any> {
-        // return await this.getCollection(collectionName).replace(handle, doc, options);
-        throw new Error('Not defined.')
+        return await this.getCollection(collectionName).replace(handle, doc, options);
+        // throw new Error('Not defined.')
     }
 
     /**
      * Get all the collection statistics.
      */
     async stats(collectionName: string): Promise<CollectionFigures> {
-        // return await this.getCollection(collectionName).figures();
-        throw new Error('Not defined.')
+        return await this.getCollection(collectionName).figures();
+        // throw new Error('Not defined.')
     }
 
     /**
