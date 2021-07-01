@@ -13,6 +13,9 @@ import {ExpoConnectionOptions} from "../driver/expo/ExpoConnectionOptions";
 import {AuroraDataApiConnectionOptions} from "../driver/aurora-data-api/AuroraDataApiConnectionOptions";
 import {SapConnectionOptions} from "../driver/sap/SapConnectionOptions";
 import {ArangoConnectionOptions} from "../driver/arangojs/ArangoConnectionOptions";
+import {AuroraDataApiPostgresConnectionOptions} from "../driver/aurora-data-api-pg/AuroraDataApiPostgresConnectionOptions";
+import {BetterSqlite3ConnectionOptions} from "../driver/better-sqlite3/BetterSqlite3ConnectionOptions";
+import {CapacitorConnectionOptions} from "../driver/capacitor/CapacitorConnectionOptions";
 
 
 /**
@@ -35,4 +38,7 @@ export type ConnectionOptions =
     MongoConnectionOptions|
     ArangoConnectionOptions|
     AuroraDataApiConnectionOptions|
-    ExpoConnectionOptions;
+    AuroraDataApiPostgresConnectionOptions|
+    ExpoConnectionOptions|
+    BetterSqlite3ConnectionOptions |
+    CapacitorConnectionOptions;

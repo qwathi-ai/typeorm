@@ -13,6 +13,9 @@ import {BaseConnectionOptions} from "../../connection/BaseConnectionOptions";
 import {EntityMetadata} from "../../metadata/EntityMetadata";
 import {OrmUtils} from "../../util/OrmUtils";
 import {ApplyValueTransformers} from "../../util/ApplyValueTransformers";
+import {ReplicationMode} from "../types/ReplicationMode";
+import {DriverUtils} from "../DriverUtils";
+import { TypeORMError } from "../../error";
 
 /**
  * Organizes communication with sqlite DBMS.
@@ -130,12 +133,31 @@ export abstract class AbstractSqliteDriver implements Driver {
     /**
      * Gets list of column data types that support precision by a driver.
      */
-    withPrecisionColumnTypes: ColumnType[] = [];
+    withPrecisionColumnTypes: ColumnType[] = [
+        "real",
+        "double",
+        "double precision",
+        "float",
+        "real",
+        "numeric",
+        "decimal",
+        "date",
+        "time",
+        "datetime"
+    ];
 
     /**
      * Gets list of column data types that support scale by a driver.
      */
-    withScaleColumnTypes: ColumnType[] = [];
+    withScaleColumnTypes: ColumnType[] = [
+        "real",
+        "double",
+        "double precision",
+        "float",
+        "real",
+        "numeric",
+        "decimal",
+    ];
 
     /**
      * Orm has special columns and we need to know what database column types should be for those types.
@@ -186,6 +208,8 @@ export abstract class AbstractSqliteDriver implements Driver {
     constructor(connection: Connection) {
         this.connection = connection;
         this.options = connection.options as BaseConnectionOptions;
+
+        this.database = DriverUtils.buildDriverOptions(this.options).database;
     }
 
     // -------------------------------------------------------------------------
@@ -195,7 +219,7 @@ export abstract class AbstractSqliteDriver implements Driver {
     /**
      * Creates a query runner used to execute database queries.
      */
-    abstract createQueryRunner(mode: "master"|"slave"): QueryRunner;
+    abstract createQueryRunner(mode: ReplicationMode): QueryRunner;
 
     // -------------------------------------------------------------------------
     // Public Methods
@@ -428,7 +452,7 @@ export abstract class AbstractSqliteDriver implements Driver {
     /**
      * Normalizes "default" value of the column.
      */
-    normalizeDefault(columnMetadata: ColumnMetadata): string {
+    normalizeDefault(columnMetadata: ColumnMetadata): string | undefined {
         const defaultValue = columnMetadata.default;
 
         if (typeof defaultValue === "number") {
@@ -442,6 +466,9 @@ export abstract class AbstractSqliteDriver implements Driver {
 
         } else if (typeof defaultValue === "string") {
             return `'${defaultValue}'`;
+
+        } else if (defaultValue === null) {
+            return undefined;
 
         } else {
             return defaultValue;
@@ -507,11 +534,13 @@ export abstract class AbstractSqliteDriver implements Driver {
     /**
      * Creates generated map of values generated or returned by database after INSERT query.
      */
-    createGeneratedMap(metadata: EntityMetadata, insertResult: any) {
+    createGeneratedMap(metadata: EntityMetadata, insertResult: any, entityIndex: number, entityNum: number) {
         const generatedMap = metadata.generatedColumns.reduce((map, generatedColumn) => {
             let value: any;
             if (generatedColumn.generationStrategy === "increment" && insertResult) {
-                value = insertResult;
+                // NOTE: When INSERT statement is successfully completed, the last inserted row ID is returned.
+                // see also: SqliteQueryRunner.query()
+                value = insertResult - entityNum + entityIndex + 1;
             // } else if (generatedColumn.generationStrategy === "uuid") {
             //     value = insertValue[generatedColumn.databaseName];
             }
@@ -540,7 +569,7 @@ export abstract class AbstractSqliteDriver implements Driver {
             // console.log("precision:", tableColumn.precision, columnMetadata.precision);
             // console.log("scale:", tableColumn.scale, columnMetadata.scale);
             // console.log("comment:", tableColumn.comment, columnMetadata.comment);
-            // console.log("default:", tableColumn.default, columnMetadata.default);
+            // console.log("default:", this.normalizeDefault(columnMetadata), columnMetadata.default);
             // console.log("isPrimary:", tableColumn.isPrimary, columnMetadata.isPrimary);
             // console.log("isNullable:", tableColumn.isNullable, columnMetadata.isNullable);
             // console.log("isUnique:", tableColumn.isUnique, this.normalizeIsUnique(columnMetadata));
@@ -576,6 +605,13 @@ export abstract class AbstractSqliteDriver implements Driver {
     }
 
     /**
+     * Returns true if driver supports fulltext indices.
+     */
+    isFullTextColumnTypeSupported(): boolean {
+        return false;
+    }
+
+    /**
      * Creates an escaped parameter.
      */
     createParameter(parameterName: string, index: number): string {
@@ -592,7 +628,7 @@ export abstract class AbstractSqliteDriver implements Driver {
      * Creates connection with the database.
      */
     protected createDatabaseConnection() {
-        throw new Error("Do not use AbstractSqlite directly, it has to be used with one of the sqlite drivers");
+        throw new TypeORMError("Do not use AbstractSqlite directly, it has to be used with one of the sqlite drivers");
     }
 
     /**

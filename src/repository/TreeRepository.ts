@@ -2,6 +2,7 @@ import {Repository} from "./Repository";
 import {SelectQueryBuilder} from "../query-builder/SelectQueryBuilder";
 import {ObjectLiteral} from "../common/ObjectLiteral";
 import {AbstractSqliteDriver} from "../driver/sqlite-abstract/AbstractSqliteDriver";
+import { TypeORMError } from "../error/TypeORMError";
 
 /**
  * Repository with additional functions to work with trees.
@@ -9,9 +10,6 @@ import {AbstractSqliteDriver} from "../driver/sqlite-abstract/AbstractSqliteDriv
  * @see Repository
  */
 export class TreeRepository<Entity> extends Repository<Entity> {
-
-    // todo: implement moving
-    // todo: implement removing
 
     // -------------------------------------------------------------------------
     // Public Methods
@@ -33,7 +31,7 @@ export class TreeRepository<Entity> extends Repository<Entity> {
         const escapeAlias = (alias: string) => this.manager.connection.driver.escape(alias);
         const escapeColumn = (column: string) => this.manager.connection.driver.escape(column);
         const parentPropertyName = this.manager.connection.namingStrategy.joinColumnName(
-          this.metadata.treeParentRelation!.propertyName, "id"
+            this.metadata.treeParentRelation!.propertyName, this.metadata.primaryColumns[0].propertyName
         );
 
         return this.createQueryBuilder("treeEntity")
@@ -134,7 +132,7 @@ export class TreeRepository<Entity> extends Repository<Entity> {
                 });
         }
 
-        throw new Error(`Supported only in tree entities`);
+        throw new TypeORMError(`Supported only in tree entities`);
     }
 
     /**
@@ -232,7 +230,7 @@ export class TreeRepository<Entity> extends Repository<Entity> {
                 });
         }
 
-        throw new Error(`Supported only in tree entities`);
+        throw new TypeORMError(`Supported only in tree entities`);
     }
 
     /**
@@ -265,7 +263,7 @@ export class TreeRepository<Entity> extends Repository<Entity> {
         const parentEntityId = this.metadata.primaryColumns[0].getEntityValue(entity);
         const childRelationMaps = relationMaps.filter(relationMap => relationMap.parentId === parentEntityId);
         const childIds = new Set(childRelationMaps.map(relationMap => relationMap.id));
-        entity[childProperty] = entities.filter(entity => childIds.has(entity.id));
+        entity[childProperty] = entities.filter(entity => childIds.has(this.metadata.primaryColumns[0].getEntityValue(entity)));
         entity[childProperty].forEach((childEntity: any) => {
             this.buildChildrenEntityTree(childEntity, entities, relationMaps);
         });
@@ -279,7 +277,7 @@ export class TreeRepository<Entity> extends Repository<Entity> {
             if (!parentRelationMap)
                 return false;
 
-            return entity[this.metadata.primaryColumns[0].propertyName] === parentRelationMap.parentId;
+            return this.metadata.primaryColumns[0].getEntityValue(entity) === parentRelationMap.parentId;
         });
         if (parentEntity) {
             entity[parentProperty] = parentEntity;

@@ -95,7 +95,7 @@ export class OneToManySubjectBuilder {
 
                 // we decided to remove this error because it brings complications when saving object with non-saved entities
                 // if (!relatedEntitySubject)
-                //     throw new Error(`One-to-many relation "${relation.entityMetadata.name}.${relation.propertyPath}" contains ` +
+                //     throw new TypeORMError(`One-to-many relation "${relation.entityMetadata.name}.${relation.propertyPath}" contains ` +
                 //         `entities which do not exist in the database yet, thus they cannot be bind in the database. ` +
                 //         `Please setup cascade insertion or save entities before binding it.`);
                 if (!relatedEntitySubject)
@@ -117,7 +117,7 @@ export class OneToManySubjectBuilder {
             // check if this binding really exist in the database
             // by example: find our category if its already bind in the database
             const relationIdInDatabaseSubjectRelation = relatedEntityDatabaseRelationIds.find(relatedDatabaseEntityRelationId => {
-                return OrmUtils.deepCompare(relationIdMap, relatedDatabaseEntityRelationId);
+                return OrmUtils.compareIds(relationIdMap, relatedDatabaseEntityRelationId);
             });
 
             // if relationIdMap DOES NOT exist in the subject's relation in the database it means its a new relation and we need to "bind" them
@@ -165,13 +165,19 @@ export class OneToManySubjectBuilder {
                 const removedRelatedEntitySubject = new Subject({
                     metadata: relation.inverseEntityMetadata,
                     parentSubject: subject,
-                    canBeUpdated: true,
                     identifier: removedRelatedEntityRelationId,
-                    changeMaps: [{
+                });
+
+                if (!relation.inverseRelation || relation.inverseRelation.orphanedRowAction === "nullify") {
+                    removedRelatedEntitySubject.canBeUpdated = true;
+                    removedRelatedEntitySubject.changeMaps = [{
                         relation: relation.inverseRelation!,
                         value: null
-                    }]
-                });
+                    }];
+                } else if (relation.inverseRelation.orphanedRowAction === "delete") {
+                    removedRelatedEntitySubject.mustBeRemoved = true;
+                }
+
                 this.subjects.push(removedRelatedEntitySubject);
             });
     }
