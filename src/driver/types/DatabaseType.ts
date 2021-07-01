@@ -17,4 +17,7 @@ export type DatabaseType =
     "mongodb"|
     "arangodb"|
     "aurora-data-api"|
-    "expo";
+    "aurora-data-api-pg"|
+    "expo"|
+    "better-sqlite3" |
+    "capacitor";

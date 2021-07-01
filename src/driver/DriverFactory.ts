@@ -12,10 +12,13 @@ import {MysqlDriver} from "./mysql/MysqlDriver";
 import {PostgresDriver} from "./postgres/PostgresDriver";
 import {ExpoDriver} from "./expo/ExpoDriver";
 import {AuroraDataApiDriver} from "./aurora-data-api/AuroraDataApiDriver";
+import {AuroraDataApiPostgresDriver} from "./aurora-data-api-pg/AuroraDataApiPostgresDriver";
 import {Driver} from "./Driver";
 import {Connection} from "../connection/Connection";
 import {SapDriver} from "./sap/SapDriver";
 import { ArangoDriver } from "./arangojs/ArangoDriver";
+import {BetterSqlite3Driver} from "./better-sqlite3/BetterSqlite3Driver";
+import {CapacitorDriver} from "./capacitor/CapacitorDriver";
 
 /**
  * Helps to create drivers.
@@ -42,6 +45,8 @@ export class DriverFactory {
                 return new MysqlDriver(connection);
             case "sqlite":
                 return new SqliteDriver(connection);
+            case "better-sqlite3":
+                return new BetterSqlite3Driver(connection);
             case "cordova":
                 return new CordovaDriver(connection);
             case "nativescript":
@@ -60,8 +65,18 @@ export class DriverFactory {
                 return new ExpoDriver(connection);
             case "aurora-data-api":
                 return new AuroraDataApiDriver(connection);
+            case "aurora-data-api-pg":
+                return new AuroraDataApiPostgresDriver(connection);
+            case "capacitor":
+                return new CapacitorDriver(connection);
             default:
-                throw new MissingDriverError(type);
+                throw new MissingDriverError(
+                    type,
+                    [
+                        "cordova", "expo", "mariadb", "mongodb", "mssql", "mysql", "oracle", "postgres",
+                        "sqlite", "better-sqlite3", "sqljs", "react-native", "aurora-data-api", "aurora-data-api-pg"
+                    ]
+                );
         }
     }
 
